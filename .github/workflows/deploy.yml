@@ -1,0 +1,31 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Login to DockerHub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    - name: Build and push image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/wisecow:latest .
+        docker push ${{ secrets.DOCKER_USERNAME }}/wisecow:latest
+
+    - name: Deploy to Kubernetes
+      uses: azure/k8s-deploy@v4
+      with:
+        manifests: |
+          k8s/wisecow-deployment.yaml
+          k8s/wisecow-service.yaml
+          k8s/wisecow-ingress.yaml
+        images: |
+          ${{ secrets.DOCKER_USERNAME }}/wisecow:latest
+
